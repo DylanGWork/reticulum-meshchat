@@ -51,6 +51,9 @@ A simple mesh network communications app powered by the [Reticulum Network Stack
   - I have tested two-way audio calls over LoRa with a single hop. It works well when a [reasonable bitrate](https://unsigned.io/understanding-lora-parameters/) is configured on the RNode.
   - Some browsers such as FireFox don't work as expected. Try using a Chromium based browser if running via the command line.
 
+## Fork purpose
+- Adding a gaming area for low bandwidth games such as Chess or Checkers.
+
 ## Download
 
 You can download the latest version for Windows, Mac and Linux from the [releases](https://github.com/liamcottle/reticulum-meshchat/releases) page.
