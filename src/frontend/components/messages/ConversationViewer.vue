@@ -93,8 +93,18 @@
 
                         <div class="w-full space-y-0.5 px-2.5 py-1">
 
-                            <!-- content -->
-                            <div v-if="chatItem.lxmf_message.content" style="white-space:pre-wrap;word-break:break-word;font-family:inherit;">{{ chatItem.lxmf_message.content }}</div>
+                            <GameInviteCard
+                            v-if="getGamePayload(chatItem) && getGamePayload(chatItem).type==='game' && getGamePayload(chatItem).op==='create'"
+                            :payload="getGamePayload(chatItem)"
+                            @respond="p => { newMessageText = encodeGame(p) }"
+                            />
+
+                            <!-- fallback: normal text content -->
+                            <div v-else-if="chatItem?.lxmf_message?.content"
+                                style="white-space:pre-wrap;word-break:break-word;font-family:inherit;">
+                            {{ chatItem.lxmf_message.content }}
+                            </div>
+
 
                             <!-- image field -->
                             <div v-if="chatItem.lxmf_message.fields?.image">
@@ -353,6 +363,14 @@
                             </AddAudioButton>
                         </div>
 
+                        <!-- TEST: insert a game invite into the input -->
+                        <button
+                        @click="insertGameInvite"
+                        type="button"
+                        class="my-auto ml-1 inline-flex items-center gap-x-1 rounded-md bg-purple-600 px-2.5 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-purple-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-600">
+                        Invite Game
+                        </button>
+
                         <!-- send message -->
                         <div class="ml-auto my-auto">
                             <SendMessageButton
@@ -410,6 +428,9 @@ import AddImageButton from "./AddImageButton.vue";
 import IconButton from "../IconButton.vue";
 import GlobalEmitter from "../../js/GlobalEmitter";
 
+import GameInviteCard from "./GameInviteCard.vue"
+import { decodeGame, encodeGame } from "../../../utils/gameWire.js"
+
 export default {
     name: 'ConversationViewer',
     components: {
@@ -419,6 +440,7 @@ export default {
         MaterialDesignIcon,
         SendMessageButton,
         AddAudioButton,
+        GameInviteCard,
     },
     props: {
         myLxmfAddressHash: String,
@@ -480,6 +502,29 @@ export default {
 
     },
     methods: {
+        decodeGame,
+        encodeGame,
+        decodeGameSafe(text) {
+            try { return text ? this.decodeGame(text) : null; } 
+            catch { return null; }
+        },
+        getGamePayload(chatItem) {
+            return this.decodeGameSafe(chatItem?.lxmf_message?.content);
+        },
+
+        insertGameInvite() {
+        const invite = {
+            type: 'game',
+            op: 'create',
+            game: 'tic_tac_toe',
+            id: (crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)),
+            inviter: this.myLxmfAddressHash,
+            ts: Date.now(),
+        };
+        this.newMessageText = this.encodeGame(invite);
+        },
+
+
         close() {
             this.$emit("close");
         },
@@ -1618,3 +1663,4 @@ export default {
     },
 }
 </script>
+
