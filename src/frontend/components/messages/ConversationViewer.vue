@@ -96,8 +96,16 @@
                             <GameInviteCard
                             v-if="getGamePayload(chatItem) && getGamePayload(chatItem).type==='game' && getGamePayload(chatItem).op==='create'"
                             :payload="getGamePayload(chatItem)"
-                            @respond="p => { newMessageText = encodeGame(p) }"
+                            @respond="onInviteRespond"
                             />
+
+                            <!-- GAME: show compact status for accept/decline -->
+                            <div
+                            v-else-if="isGameResponse(chatItem)"
+                            class="inline-block text-xs px-2 py-1 rounded-full bg-white/70 text-gray-800 dark:bg-black/30 dark:text-gray-200"
+                            >
+                            {{ prettyGameResponse(getGamePayload(chatItem)) }}
+                            </div>
 
                             <!-- fallback: normal text content -->
                             <div v-else-if="chatItem?.lxmf_message?.content"
@@ -454,6 +462,9 @@ export default {
             selectedPeerLxmfStampInfo: null,
             selectedPeerSignalMetrics: null,
 
+            activeGame: null,
+
+
             lxmfMessagesRequestSequence: 0,
             chatItems: [],
 
@@ -511,17 +522,44 @@ export default {
         getGamePayload(chatItem) {
             return this.decodeGameSafe(chatItem?.lxmf_message?.content);
         },
+        isGameResponse(chatItem) {
+            const p = this.getGamePayload(chatItem);
+            return !!(p && p.type === 'game' && (p.op === 'accept' || p.op === 'decline'));
+        },
+        prettyGameResponse(p) {
+            return (p.op === 'accept' ? 'Invite accepted' : 'Invite declined') + ` (session ${p.id})`;
+        },
+
+        onInviteRespond(p) {
+        this.newMessageText = this.encodeGame(p);
+        this.sendMessage();
+        // If this was an Accept, open the game locally
+        if (p && p.op === 'accept') {
+            this.openGameFromPayload(p, /* isInbound = */ false);
+        }
+        },
+
+        openGameFromPayload(p, isInbound = false) {
+        const session = p?.id ?? '??????';
+        const game = p?.game ?? 'tic_tac_toe';
+        this.activeGame = { game, id: session, isInbound: !!isInbound };
+        }
+
 
         insertGameInvite() {
-        const invite = {
-            type: 'game',
-            op: 'create',
-            game: 'tic_tac_toe',
-            id: (crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2)),
-            inviter: this.myLxmfAddressHash,
-            ts: Date.now(),
-        };
-        this.newMessageText = this.encodeGame(invite);
+        // Minimal compact invite: op + game (id auto-generated inside encodeGame)
+        this.newMessageText = this.encodeGame({ op: 'create', game: 'tic_tac_toe' });
+        this.sendMessage();
+        },
+
+        openGameFromPayload(p, isInbound) {
+        // p = { type:'game', op:'accept', game:'tic_tac_toe', id:'19c73b' }
+        GlobalEmitter.emit('open-game', {
+            sessionId: p.id,
+            game: p.game,
+            peerHash: this.selectedPeer?.destination_hash,
+            initiator: isInbound ? 'peer' : 'me',
+        });
         },
 
 
